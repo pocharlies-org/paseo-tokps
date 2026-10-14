@@ -86,14 +86,31 @@ function apply(agent: PaseoAgent): void {
 }
 
 export function startRates(paseo: Paseo): () => void {
-  const off = paseo.agents.subscribe((update) => {
-    if (update.kind === "upsert") apply(update.agent);
-  });
-  paseo.agents.list().then(
+  // The plugin's own daemon subscription: `agents.subscribe()` alone is a local listener over the app cache and stays
+  // silent for a plugin session; `list({subscribe:{}})` opens a routed one whose updates carry the agent snapshots.
+  let stopObserver: (() => void) | null = null;
+  let subscription: Awaited<ReturnType<Paseo["agents"]["list"]>>["subscription"] | null = null;
+  paseo.agents.list({ subscribe: {} }).then(
     (result) => {
+      subscription = result.subscription ?? null;
       for (const entry of result.entries) seen.set(entry.agent.id, entry.agent.workspaceId ?? "");
+      if (subscription) {
+        stopObserver = subscription.subscribe({
+          snapshot: (snap) => {
+            for (const entry of snap.entries) apply(entry.agent);
+          },
+          update: (message) => {
+            const payload = (message as { payload?: { kind?: string; agent?: PaseoAgent } }).payload;
+            if (message.type === "agent_update" && payload?.kind === "upsert" && payload.agent) apply(payload.agent);
+          },
+        });
+      }
+      notify();
     },
     () => {},
   );
-  return off;
+  return () => {
+    if (stopObserver) stopObserver();
+    void subscription?.release();
+  };
 }

@@ -1,9 +1,18 @@
 // The rate lives here and nowhere else: every agent_update snapshot passes through `apply`, which keeps per-agent
 // turn state and publishes {live estimate while running, exact rate once the turn ends}. Views subscribe.
 import type { PluginClientContext } from "@getpaseo/plugin/client";
-import type { PaseoAgent } from "@getpaseo/client";
 
 type Paseo = PluginClientContext["paseo"];
+
+// The fields this plugin reads from an agent snapshot, spelled out because the plugin client bundle may not import
+// @getpaseo/client (runtime boundary); the snapshots arrive structurally.
+type PaseoAgent = {
+  id: string;
+  workspaceId?: string | null;
+  status: string;
+  activeTurn?: { turnId: string; startedAt: string | null } | null;
+  lastUsage?: { outputTokens?: number; contextWindowUsedTokens?: number } | null;
+};
 
 export type TurnRate = { rate: number; out: number; seconds: number };
 export type AgentRate = { live: number | null; last: TurnRate | null };

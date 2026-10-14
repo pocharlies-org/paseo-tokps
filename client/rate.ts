@@ -31,8 +31,8 @@ export function agentWorkspace(agentId: string): string | null {
   return seen.get(agentId) ?? null;
 }
 
-export function seenAgentIds(): string[] {
-  return [...seen.keys()];
+export function ratedAgentIds(): string[] {
+  return [...rates.keys()];
 }
 
 export function subscribeRates(listener: () => void): () => void {
@@ -89,8 +89,11 @@ export function startRates(paseo: Paseo): () => void {
   const off = paseo.agents.subscribe((update) => {
     if (update.kind === "upsert") apply(update.agent);
   });
-  paseo.agents.list().then((result) => {
-    for (const entry of result.entries) apply(entry.agent);
-  }, () => {});
+  paseo.agents.list().then(
+    (result) => {
+      for (const entry of result.entries) seen.set(entry.agent.id, entry.agent.workspaceId ?? "");
+    },
+    () => {},
+  );
   return off;
 }

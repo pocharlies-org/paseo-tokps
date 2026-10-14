@@ -1,0 +1,26 @@
+{
+  "name": "paseo-tokps",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Paseo plugin: tokens/second of the request beside the Thinking line and in a composer pill, plus the thinking text opened up.",
+  "files": [
+    "paseo-plugin.json",
+    "OVERVIEW.md",
+    "index.client.tsx",
+    "client/"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@getpaseo/client": "0.11.2",
+    "@getpaseo/plugin": "0.11.2",
+    "@types/react": "~19.2.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "typescript": "^5.9.3",
+    "zod": "^4.4.3"
+  },
+  "license": "MIT"
+}

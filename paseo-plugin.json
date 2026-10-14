@@ -1,0 +1,6 @@
+{
+  "id": "paseo-tokps",
+  "name": "Tokens por segundo",
+  "description": "Shows the request's output rate next to the Thinking line and in a composer pill, and opens up the thinking text.",
+  "requirements": { "paseo": ">=0.11.2 <0.12.0" }
+}

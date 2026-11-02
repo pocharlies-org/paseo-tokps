@@ -14,7 +14,7 @@ import { agentWorkspace, fmtRate, rateOf, ratedAgentIds, startRates, subscribeRa
 // composer pill keeps the live figure visible while the agent runs. The pill appears only for agents whose turn this
 // client actually watched (Paseo gives no "current agent" hook, and registering one per known agent is too heavy).
 //
-// On a compact layout (the phone) the row of chips has no room for the label — it does not wrap (SC-4336, Dani 02-11: «en el
+// On a compact layout (the phone) the row of chips has no room for the label — it does not wrap (Dani 02-11: «en el
 // móvil acaban amontonados»): there the pill keeps only the gauge and the figure moves into its popover, which is also what
 // the pill opens on desktop when you want the exact number. The host hands `layout.compact` to components only, never to the
 // registration, so the icon reports it and the label is blanked from there.

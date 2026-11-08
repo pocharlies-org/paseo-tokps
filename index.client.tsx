@@ -14,11 +14,11 @@ import { agentWorkspace, fmtRate, rateOf, ratedAgentIds, startRates, subscribeRa
 // composer pill keeps the live figure visible while the agent runs. The pill appears only for agents whose turn this
 // client actually watched (Paseo gives no "current agent" hook, and registering one per known agent is too heavy).
 //
-// On a compact layout (the phone) the row of chips has no room for the label — it does not wrap (Dani 02-11: «en el
-// móvil acaban amontonados»): there the pill keeps only the gauge and the figure moves into its popover, which is also what
-// the pill opens on desktop when you want the exact number. The host hands `layout.compact` to components only, never to the
-// registration, so the icon reports it and the label is blanked from there.
-// shortcut: the first paint uses the wide label until the icon reports the layout; upgrade when the SDK exposes layout at registration.
+// On a compact layout (the phone) the row of chips does not fit and the host squeezes plugin pills below their icon (Dani
+// 08-11: «se ve cortado»; 02-11: «en el móvil acaban amontonados»): there the pill is hidden — it has nothing to warn about —
+// and the figure stays in the thinking row. The host hands `layout.compact` to components only, never to the registration,
+// so the gauge and the thinking row report it.
+// shortcut: the first paint shows the pill until a component reports the layout; upgrade when the SDK exposes layout at registration.
 function rateLabel(agentId: string): string {
   const rate = rateOf(agentId);
   if (rate.live !== null) return `≈${fmtRate(rate.live)}`;
@@ -42,6 +42,16 @@ function makeGauge(reportCompact: (compact: boolean) => void) {
   };
 }
 
+function makeThinkingRow(reportCompact: (compact: boolean) => void) {
+  return function ReportingThinkingRow(props: Parameters<typeof ThinkingRow>[0]) {
+    const compact = props.layout.compact;
+    useEffect(() => {
+      reportCompact(compact);
+    }, [compact]);
+    return <ThinkingRow {...props} />;
+  };
+}
+
 export default function contribute(client: PluginClientContext) {
   const stopRates = startRates(client.paseo);
 
@@ -52,17 +62,25 @@ export default function contribute(client: PluginClientContext) {
       items: [{ type: "plugin", kind: "tokps-thinking", version: 1, data: { text: item.text } }],
     }),
   });
-  client.addTimelineRenderer({ kind: "tokps-thinking", version: 1, schema: thinkingSchema, Component: ThinkingRow });
-
-  type Pill = { reg: PluginButtonRegistration; compact: boolean; label: string };
+  type Pill = { reg: PluginButtonRegistration; label: string; visible: boolean };
   const pills = new Map<string, Pill>();
+  let compact = false;
 
   const show = (pill: Pill, agentId: string) => {
-    const label = pill.compact ? "" : rateLabel(agentId);
-    if (label === pill.label) return;
+    const label = rateLabel(agentId);
+    const visible = !compact;
+    if (label === pill.label && visible === pill.visible) return;
     pill.label = label;
-    pill.reg.update({ label });
+    pill.visible = visible;
+    pill.reg.update({ label, visible });
   };
+  const reportCompact = (next: boolean) => {
+    if (compact === next) return;
+    compact = next;
+    for (const [agentId, pill] of pills) show(pill, agentId);
+  };
+
+  client.addTimelineRenderer({ kind: "tokps-thinking", version: 1, schema: thinkingSchema, Component: makeThinkingRow(reportCompact) });
 
   const refreshPills = () => {
     for (const agentId of ratedAgentIds()) {
@@ -70,24 +88,20 @@ export default function contribute(client: PluginClientContext) {
       if (!workspaceId) continue;
       const pill = pills.get(agentId);
       if (!pill) {
-        const fresh: Pill = { reg: undefined as unknown as PluginButtonRegistration, compact: false, label: "" };
-        fresh.reg = client.addComposerPill({
+        const label = rateLabel(agentId);
+        const reg = client.addComposerPill({
           id: `tokps-${agentId}`,
           workspaceId,
           agentId,
           button: {
             title: "Tokens por segundo",
-            icon: makeGauge((compact) => {
-              if (fresh.compact === compact) return;
-              fresh.compact = compact;
-              show(fresh, agentId);
-            }),
-            label: rateLabel(agentId),
+            icon: makeGauge(reportCompact),
+            label,
+            visible: !compact,
             behavior: { kind: "popover", Content: RatePopover },
           },
         });
-        fresh.label = rateLabel(agentId);
-        pills.set(agentId, fresh);
+        pills.set(agentId, { reg, label, visible: !compact });
         continue;
       }
       show(pill, agentId);
